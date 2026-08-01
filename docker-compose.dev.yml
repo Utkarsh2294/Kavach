@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kavach-postgres
+    environment:
+      POSTGRES_USER: kavach
+      POSTGRES_PASSWORD: kavach_dev_password
+      POSTGRES_DB: kavach
+    ports:
+      - '5432:5432'
+    volumes:
+      - kavach-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kavach']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kavach-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - kavach-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  kavach-pg-data:
+  kavach-redis-data:

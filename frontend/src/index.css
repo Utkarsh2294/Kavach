@@ -1,0 +1,264 @@
+@import "tailwindcss";
+
+
+
+@theme {
+  /* Typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  /* Primary palette — indigo */
+  --color-primary-50: #EEF2FF;
+  --color-primary-100: #E0E7FF;
+  --color-primary-200: #C7D2FE;
+  --color-primary-300: #A5B4FC;
+  --color-primary-400: #818CF8;
+  --color-primary-500: #6366F1;
+  --color-primary-600: #4F46E5;
+  --color-primary-700: #4338CA;
+  --color-primary-800: #3730A3;
+  --color-primary-900: #312E81;
+
+  /* Accent — violet */
+  --color-accent-400: #A78BFA;
+  --color-accent-500: #8B5CF6;
+  --color-accent-600: #7C3AED;
+
+  /* Status colors */
+  --color-success-400: #34D399;
+  --color-success-500: #10B981;
+  --color-success-600: #059669;
+
+  --color-warning-400: #FBBF24;
+  --color-warning-500: #F59E0B;
+  --color-warning-600: #D97706;
+
+  --color-danger-400: #F87171;
+  --color-danger-500: #EF4444;
+  --color-danger-600: #DC2626;
+
+  --color-info-400: #38BDF8;
+  --color-info-500: #0EA5E9;
+  --color-info-600: #0284C7;
+
+  /* Surface colors (used via CSS variables for theme switching) */
+  --color-surface-50: #FAFAFA;
+  --color-surface-100: #F4F4F5;
+  --color-surface-200: #E4E4E7;
+  --color-surface-300: #D4D4D8;
+  --color-surface-400: #A1A1AA;
+  --color-surface-500: #71717A;
+  --color-surface-600: #52525B;
+  --color-surface-700: #3F3F46;
+  --color-surface-800: #27272A;
+  --color-surface-900: #18181B;
+  --color-surface-950: #09090B;
+
+  /* Sidebar dimensions */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 68px;
+  --topbar-height: 56px;
+
+  /* Semantic theme tokens — utilities like bg-background, bg-card, border-border,
+     text-foreground, text-muted-foreground are generated from these. Values are
+     re-bound per theme (:root=dark, .light=light) below. */
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-border: var(--border);
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-700) transparent;
+}
+
+.light * {
+  scrollbar-color: var(--color-surface-300) transparent;
+}
+
+::selection {
+  background-color: #6366F1;
+  color: white;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   DARK MODE (default)
+   ============================================================ */
+
+:root {
+  --background: var(--color-surface-950);
+  --foreground: var(--color-surface-50);
+  --card: var(--color-surface-900);
+  --card-foreground: var(--color-surface-50);
+  --popover: var(--color-surface-900);
+  --popover-foreground: var(--color-surface-50);
+  --primary: var(--color-primary-500);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-surface-800);
+  --secondary-foreground: var(--color-surface-50);
+  --muted: var(--color-surface-800);
+  --muted-foreground: var(--color-surface-400);
+  --accent: var(--color-accent-500);
+  --accent-foreground: #ffffff;
+  --destructive: var(--color-danger-500);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-surface-800);
+  --input: var(--color-surface-800);
+  --ring: var(--color-primary-500);
+  --sidebar-bg: var(--color-surface-950);
+  --sidebar-border: var(--color-surface-800);
+  --sidebar-accent: var(--color-surface-800);
+}
+
+.light {
+  --background: var(--color-surface-50);
+  --foreground: var(--color-surface-900);
+  --card: #ffffff;
+  --card-foreground: var(--color-surface-900);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-surface-900);
+  --primary: var(--color-primary-500);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-surface-100);
+  --secondary-foreground: var(--color-surface-900);
+  --muted: var(--color-surface-100);
+  --muted-foreground: var(--color-surface-500);
+  --accent: var(--color-accent-500);
+  --accent-foreground: #ffffff;
+  --destructive: var(--color-danger-500);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-surface-200);
+  --input: var(--color-surface-200);
+  --ring: var(--color-primary-500);
+  --sidebar-bg: #ffffff;
+  --sidebar-border: var(--color-surface-200);
+  --sidebar-accent: var(--color-surface-100);
+}
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+/* Shimmer animation for loading skeletons */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-800) 0%,
+    var(--color-surface-700) 50%,
+    var(--color-surface-800) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.light .animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-200) 0%,
+    var(--color-surface-100) 50%,
+    var(--color-surface-200) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Pulse ring for live nodes */
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* Fade in */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+/* Slide in from left (sidebar) */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.2s ease-out forwards;
+}
+
+/* Stagger children animation */
+.stagger-children > * {
+  opacity: 0;
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+
+/* Edge travel pulse for graph links */
+@keyframes edge-pulse {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  20% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+/* Number tick for counter animation */
+@keyframes number-pop {
+  0% { transform: translateY(0.15em); opacity: 0.4; }
+  50% { transform: translateY(-0.05em); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.animate-number-pop {
+  animation: number-pop 0.4s ease-out;
+}
+
+/* Gentle pulse for graph nodes */
+@keyframes node-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+.animate-node-pulse {
+  animation: node-pulse 1.2s ease-in-out infinite;
+}
