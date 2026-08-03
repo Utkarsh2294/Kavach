@@ -42,3 +42,11 @@ app.add_middleware(
 async def health():
     """Health-check endpoint."""
     return {"status": "ok"}
+
+from app.routes import agents, policies, transactions, escalations, audit
+
+app.include_router(agents.router)
+app.include_router(policies.router)
+app.include_router(transactions.router)
+app.include_router(escalations.router)
+app.include_router(audit.router)
