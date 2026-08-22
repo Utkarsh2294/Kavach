@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
-export function AuthGuard() {
+export function AuthGuard({ children }) {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
@@ -20,5 +20,5 @@ export function AuthGuard() {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <Outlet />;
+  return children ?? <Outlet />;
 }

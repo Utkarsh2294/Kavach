@@ -32,10 +32,10 @@ export function DryRunPage() {
     ? { id: 'from_hash', name: 'Imported from Policy Builder', conditions: initialJSON.conditions || [] }
     : FAKE_POLICIES.find(p => p.id === selectedPolicy);
 
-  const handleRun = () => {
+  const handleRun = async () => {
     if (!policy) return;
-    const r = dryRunPolicy(policy.conditions);
-    setResults(r);
+    const r = await dryRunPolicy(policy.conditions);
+    setResults(r.beforeAfterDiff || []);
   };
 
   const beforeAfterRows = useMemo(() => {

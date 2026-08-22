@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional, Any, Dict
 from datetime import datetime
-from sqlalchemy import Text, DateTime, text, func, ForeignKey, Index
+from sqlalchemy import Text, DateTime, Boolean, text, func, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 
@@ -36,6 +36,10 @@ class AuditLog(Base):
     payload: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False)
     prev_hash: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     this_hash: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Phase 09C sandbox isolation.
+    is_sandbox: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

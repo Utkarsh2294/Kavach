@@ -4,7 +4,7 @@ from uuid import UUID
 from datetime import datetime
 from .agent import CamelModel
 
-class TransactionCreate(BaseModel):
+class TransactionCreate(CamelModel):
     agent_id: UUID
     amount: float
     merchant_category: str

@@ -60,12 +60,12 @@ POLICY_IDS = [make_id(f"policy-{i}") for i in range(1, 9)]
 
 
 def hash_password(plain: str) -> str:
-    """Hash a password with bcrypt via passlib."""
+    """Hash a password with bcrypt directly (bcrypt 5.0+ compatible)."""
     try:
-        from passlib.hash import bcrypt
-        return bcrypt.using(rounds=12).hash(plain)
+        import bcrypt as _bcrypt
+        return _bcrypt.hashpw(plain.encode("utf-8"), _bcrypt.gensalt(rounds=12)).decode("utf-8")
     except ImportError:
-        # Fallback: store a clearly-marked placeholder if passlib isn't installed
+        # Fallback: store a clearly-marked placeholder if bcrypt isn't installed
         return f"$PLACEHOLDER${plain}"
 
 
@@ -87,7 +87,7 @@ def seed():
         # ── Check if already seeded ──────────────────────────────────────
         existing = session.get(Organization, ORG_ID)
         if existing:
-            print("✓ Database already seeded (Meridian Financial Corp exists). Skipping.")
+            print("[OK] Database already seeded (Meridian Financial Corp exists). Skipping.")
             return
 
         # ── 1. Organization ──────────────────────────────────────────────
@@ -319,7 +319,7 @@ def seed():
 
         # ── Commit ───────────────────────────────────────────────────────
         session.commit()
-        print("\n✓ Seed complete!")
+        print("\n[OK] Seed complete!")
         print(f"  Organization: {org.name} ({org.id})")
         print(f"  Users: admin@kavach.dev (admin), test@kavach.dev (operator)")
         print(f"  Password: password123")

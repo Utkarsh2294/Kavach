@@ -4,3 +4,4 @@ from .policy import *
 from .transaction import *
 from .escalation import *
 from .audit import *
+from .auth import *

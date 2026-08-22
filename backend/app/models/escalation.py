@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 from datetime import datetime
-from sqlalchemy import Text, DateTime, text, ForeignKey
+from sqlalchemy import Text, DateTime, Boolean, text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
@@ -35,6 +35,10 @@ class Escalation(Base):
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True
+    )
+    # Phase 09C sandbox isolation.
+    is_sandbox: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
 
     transaction: Mapped["Transaction"] = relationship("Transaction")

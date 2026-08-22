@@ -2,7 +2,7 @@ import uuid
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import String, Text, Float, Numeric, DateTime, text, func, ForeignKey, Index
+from sqlalchemy import String, Text, Float, Numeric, DateTime, Boolean, text, func, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
@@ -34,6 +34,11 @@ class Agent(Base):
     trust_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.5, server_default=text("0.5"))
     spend_cap_current: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, default='active', server_default=text("'active'"))
+    # Phase 09C sandbox isolation — sandbox agents/transactions are flagged and
+    # scoped out of every "real" fleet query.
+    is_sandbox: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

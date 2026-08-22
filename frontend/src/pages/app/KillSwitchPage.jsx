@@ -53,17 +53,17 @@ export function KillSwitchPage() {
   const affectedIds = selectedNodeId ? getAffectedAgents(mode, selectedNodeId) : [];
   const affectedAgents = affectedIds.map(id => agents[id]).filter(Boolean);
 
-  const handleExecute = () => {
+  const handleExecute = async () => {
     if (confirmStep === 0) {
       setConfirmStep(1);
       return;
     }
     if (mode === 'fleet') {
-      killFleet();
+      await killFleet();
     } else if (mode === 'subtree' && selectedNodeId) {
-      killSubtree(selectedNodeId);
+      await killSubtree(selectedNodeId);
     } else if (mode === 'node' && selectedNodeId) {
-      killAgent(selectedNodeId);
+      await killAgent(selectedNodeId);
     }
     setConfirmStep(0);
     setSelectedNodeId(null);

@@ -61,8 +61,7 @@ export function SignupPage() {
     setIsSubmitting(true);
     try {
       await signup(formData.name, formData.email, formData.password);
-      // After signup success, go to login
-      navigate('/login', { state: { message: 'Account created successfully. Please sign in.' } });
+      navigate('/app/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Failed to create account');
     } finally {

@@ -15,8 +15,8 @@ export function BlastRadiusPage() {
   const [maxDepth, setMaxDepth] = useState(3);
   const [result, setResult] = useState(null);
 
-  const handleCompute = () => {
-    const r = computeExposure({
+  const handleCompute = async () => {
+    const r = await computeExposure({
       spendCap,
       maxSubAgents,
       maxDelegationDepth: maxDepth,

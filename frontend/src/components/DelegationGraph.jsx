@@ -16,14 +16,14 @@ function resolveToken(token) {
   }
   if (!value) {
     const fallback = {
-      'var(--color-success-500)': '#10B981',
-      'var(--color-warning-500)': '#F59E0B',
-      'var(--color-danger-500)': '#EF4444',
-      'var(--color-danger-400)': '#F87171',
-      'var(--color-surface-500)': '#71717A',
-      'var(--color-surface-100)': '#F4F4F5',
+      'var(--color-success-500)': 'rgb(16, 185, 129)',
+      'var(--color-warning-500)': 'rgb(245, 158, 11)',
+      'var(--color-danger-500)': 'rgb(239, 68, 68)',
+      'var(--color-danger-400)': 'rgb(248, 113, 113)',
+      'var(--color-surface-500)': 'rgb(113, 113, 122)',
+      'var(--color-surface-100)': 'rgb(244, 244, 245)',
     };
-    value = fallback[token] || '#A1A1AA';
+    value = fallback[token] || 'rgb(161, 161, 170)';
   }
   TOKEN_CACHE[token] = value;
   return value;

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/command';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useAuth } from '@/hooks/useAuth';
 
 const NavItem = ({ to, icon: Icon, label, collapsed, active }) => {
   const content = (
@@ -51,6 +52,7 @@ const NavItem = ({ to, icon: Icon, label, collapsed, active }) => {
 };
 
 export function AppLayout() {
+  const { logout } = useAuth();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
   const [sandboxMode, setSandboxMode] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -206,7 +208,7 @@ export function AppLayout() {
                     <span>Settings</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/login')} className="cursor-pointer text-danger-500 focus:text-danger-500">
+                  <DropdownMenuItem onClick={async () => { await logout(); navigate('/login'); }} className="cursor-pointer text-danger-500 focus:text-danger-500">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign out</span>
                   </DropdownMenuItem>

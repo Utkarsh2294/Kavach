@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.database import get_db
-from app.deps import get_current_org_id
+from app.deps import get_current_org_id, require_role
 from app.models import Policy, Transaction, Agent
 from app.schemas.policy import (
     PolicyCreate,
@@ -29,7 +29,7 @@ async def get_policies(
     result = await db.execute(stmt)
     return result.scalars().all()
 
-@router.post("", response_model=PolicyResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=PolicyResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role('operator'))])
 async def create_policy(
     policy_data: PolicyCreate,
     org_id: UUID = Depends(get_current_org_id),
@@ -54,7 +54,7 @@ async def get_policy(
         raise HTTPException(status_code=404, detail="Policy not found")
     return policy
 
-@router.put("/{policy_id}", response_model=PolicyResponse)
+@router.put("/{policy_id}", response_model=PolicyResponse, dependencies=[Depends(require_role('operator'))])
 async def update_policy(
     policy_id: UUID,
     policy_update: PolicyUpdate,
@@ -75,7 +75,7 @@ async def update_policy(
     await db.refresh(policy)
     return policy
 
-@router.delete("/{policy_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{policy_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role('operator'))])
 async def delete_policy(
     policy_id: UUID,
     org_id: UUID = Depends(get_current_org_id),
@@ -90,7 +90,7 @@ async def delete_policy(
     await db.delete(policy)
     await db.commit()
 
-@router.post("/{policy_id}/dry-run", response_model=DryRunResponse)
+@router.post("/{policy_id}/dry-run", response_model=DryRunResponse, dependencies=[Depends(require_role('operator'))])
 async def dry_run_policy(
     policy_id: UUID,
     request: DryRunRequest,

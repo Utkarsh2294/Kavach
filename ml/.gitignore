@@ -1,0 +1,6 @@
+# generated data & trained artifacts — never committed
+data/
+artifacts/
+__pycache__/
+*.pkl
+!artifacts/.gitkeep
