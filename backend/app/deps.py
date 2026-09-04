@@ -1,9 +1,10 @@
 import uuid
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from app.config import get_settings
+from app.redis_client import RedisClient
 
 ALGORITHM = "HS256"
 
@@ -83,3 +84,28 @@ def require_role(min_role: str):
         return user
     
     return _check_role
+
+
+def rate_limit(bucket: str, limit: int, window_seconds: int):
+    """Redis-backed fixed-window limiter; fail-open only if Redis is offline."""
+    async def _check(request: Request):
+        client = request.client.host if request.client else "unknown"
+        key = f"rate:{bucket}:{client}"
+        try:
+            redis = RedisClient.get_client()
+            current = await redis.incr(key)
+            if current == 1:
+                await redis.expire(key, window_seconds)
+            if current > limit:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail={"code": "RATE_LIMITED", "message": "Too many requests. Try again shortly."},
+                    headers={"Retry-After": str(window_seconds)},
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            # Availability of governance actions must not depend on a transient
+            # limiter outage; Redis enforcement resumes on recovery.
+            return
+    return _check

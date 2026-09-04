@@ -8,9 +8,24 @@ from app.database import get_db
 from app.deps import get_current_org_id
 from app.models import AuditLog
 from app.services.audit import GENESIS_HASH, calculate_hash
-from app.schemas.audit import AuditVerifyResponse, NistMappingResponse
+from app.schemas.audit import AuditLogResponse, AuditVerifyResponse, NistMappingResponse
 
 router = APIRouter(prefix='/api/v1', tags=['Audit & Compliance'])
+
+
+@router.get("/audit", response_model=List[AuditLogResponse])
+async def get_audit_log(
+    sandbox: bool = False,
+    org_id: UUID = Depends(get_current_org_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(AuditLog)
+        .where(AuditLog.org_id == org_id, AuditLog.is_sandbox == sandbox)
+        .order_by(AuditLog.timestamp.desc())
+        .limit(500)
+    )
+    return list(result.scalars().all())
 
 @router.get("/audit/verify", response_model=AuditVerifyResponse)
 async def verify_audit_log(

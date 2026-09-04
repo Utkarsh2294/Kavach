@@ -1,0 +1,13 @@
+.git
+.github
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.coverage
+frontend/dist
+tmp
+backend/.env
+ml/data
+!ml/artifacts
+*.log

@@ -12,7 +12,7 @@ from app.models.organization import Organization
 from app.schemas.auth import (
     LoginRequest, LoginResponse, SignupRequest, SignupResponse,
     ForgotPasswordRequest, ResetPasswordRequest, RefreshRequest,
-    RefreshResponse, MessageResponse, MeResponse, UserResponse
+    RefreshResponse, MessageResponse, MeResponse, UserResponse, UserUpdate
 )
 from app.auth import (
     hash_password, verify_password, create_access_token,
@@ -20,6 +20,7 @@ from app.auth import (
 )
 from app.redis_client import RedisClient
 from app.config import get_settings
+from app.deps import rate_limit
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 security = HTTPBearer(auto_error=False)
@@ -50,7 +51,7 @@ def get_current_token_payload(credentials: HTTPAuthorizationCredentials = Depend
             detail={"error": {"code": "UNAUTHORIZED", "message": "Not authenticated"}}
         )
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse, dependencies=[Depends(rate_limit("login", 5, 60))])
 async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalars().first()
@@ -80,7 +81,8 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
         refresh_token=refresh_token
     )
 
-@router.post("/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(rate_limit("signup", 3, 300))])
 async def signup(request: SignupRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == request.email))
     existing_user = result.scalars().first()
@@ -176,6 +178,23 @@ async def get_me(payload: dict = Depends(get_current_token_payload), db: AsyncSe
             detail={"error": {"code": "UNAUTHORIZED", "message": "Not authenticated"}}
         )
         
+    return MeResponse(user=user_to_response(user))
+
+@router.patch("/me", response_model=MeResponse)
+async def update_me(
+    request: UserUpdate,
+    payload: dict = Depends(get_current_token_payload),
+    db: AsyncSession = Depends(get_db),
+):
+    if payload.get("type") != "access":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    result = await db.execute(select(User).where(User.id == uuid.UUID(payload["sub"])))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    user.name = request.name.strip()
+    await db.commit()
+    await db.refresh(user)
     return MeResponse(user=user_to_response(user))
 
 @router.post("/refresh", response_model=RefreshResponse)

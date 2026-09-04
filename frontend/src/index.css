@@ -41,7 +41,7 @@
   --color-info-500: #0EA5E9;
   --color-info-600: #0284C7;
 
-  /* Surface colors (used via CSS variables for theme switching) */
+  /* Surface colors */
   --color-surface-50: #FAFAFA;
   --color-surface-100: #F4F4F5;
   --color-surface-200: #E4E4E7;
@@ -59,9 +59,7 @@
   --sidebar-collapsed-width: 68px;
   --topbar-height: 56px;
 
-  /* Semantic theme tokens — utilities like bg-background, bg-card, border-border,
-     text-foreground, text-muted-foreground are generated from these. Values are
-     re-bound per theme (:root=dark, .light=light) below. */
+  /* Semantic tokens used by the dark-only operations console. */
   --color-background: var(--background);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -90,10 +88,6 @@
   scrollbar-color: var(--color-surface-700) transparent;
 }
 
-.light * {
-  scrollbar-color: var(--color-surface-300) transparent;
-}
-
 ::selection {
   background-color: #6366F1;
   color: white;
@@ -106,7 +100,7 @@ body {
 }
 
 /* ============================================================
-   DARK MODE (default)
+   DARK OPERATIONS THEME
    ============================================================ */
 
 :root {
@@ -134,31 +128,6 @@ body {
   --sidebar-accent: var(--color-surface-800);
 }
 
-.light {
-  --background: var(--color-surface-50);
-  --foreground: var(--color-surface-900);
-  --card: #ffffff;
-  --card-foreground: var(--color-surface-900);
-  --popover: #ffffff;
-  --popover-foreground: var(--color-surface-900);
-  --primary: var(--color-primary-500);
-  --primary-foreground: #ffffff;
-  --secondary: var(--color-surface-100);
-  --secondary-foreground: var(--color-surface-900);
-  --muted: var(--color-surface-100);
-  --muted-foreground: var(--color-surface-500);
-  --accent: var(--color-accent-500);
-  --accent-foreground: #ffffff;
-  --destructive: var(--color-danger-500);
-  --destructive-foreground: #ffffff;
-  --border: var(--color-surface-200);
-  --input: var(--color-surface-200);
-  --ring: var(--color-primary-500);
-  --sidebar-bg: #ffffff;
-  --sidebar-border: var(--color-surface-200);
-  --sidebar-accent: var(--color-surface-100);
-}
-
 /* ============================================================
    UTILITY CLASSES
    ============================================================ */
@@ -178,16 +147,6 @@ body {
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
-}
-
-.light .animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--color-surface-200) 0%,
-    var(--color-surface-100) 50%,
-    var(--color-surface-200) 100%
-  );
-  background-size: 200% 100%;
 }
 
 /* Pulse ring for live nodes */

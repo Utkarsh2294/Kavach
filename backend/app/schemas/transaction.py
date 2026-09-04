@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
@@ -6,8 +6,8 @@ from .agent import CamelModel
 
 class TransactionCreate(CamelModel):
     agent_id: UUID
-    amount: float
-    merchant_category: str
+    amount: float = Field(gt=0, le=1_000_000_000)
+    merchant_category: str = Field(min_length=1, max_length=120)
 
 class TransactionResponse(CamelModel):
     id: UUID

@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Eye } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/hooks/useAuth';
 
 const FIELD_OPTIONS = [
   { value: 'amount', label: 'Amount' },
-  { value: 'merchantCategory', label: 'Merchant Category' },
-  { value: 'delegationDepth', label: 'Delegation Depth' },
-  { value: 'agentType', label: 'Agent Type' },
-  { value: 'timeOfDayHour', label: 'Time of Day Hour' },
+  { value: 'merchant_category', label: 'Merchant Category' },
+  { value: 'delegation_depth', label: 'Delegation Depth' },
+  { value: 'agent_type', label: 'Agent Type' },
+  { value: 'time_of_day_hour', label: 'Time of Day Hour' },
 ];
 
 const OP_OPTIONS = [
@@ -31,30 +31,69 @@ const LOGIC_OPTIONS = [
 ];
 
 function buildJsonPreview(conditions, logic) {
-  return {
-    logic: logic === 'all' ? 'AND' : 'OR',
-    conditions: conditions.map(c => ({
+  const rules = conditions.map(c => ({
       field: c.field,
-      operator: c.op,
+      op: c.op,
       value: c.op === 'in' || c.op === 'not_in'
         ? (typeof c.value === 'string' ? c.value.split(',').map(s => s.trim()).filter(Boolean) : c.value)
         : isNaN(Number(c.value)) ? c.value : Number(c.value),
-    })),
-  };
+    }));
+  return rules.length === 1 ? rules[0] : { [logic]: rules };
 }
 
 export function PolicyBuilderPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
+  const { accessToken } = useAuth();
 
   const [name, setName] = useState('');
+  const [priority, setPriority] = useState(100);
+  const [active, setActive] = useState(true);
   const [logic, setLogic] = useState('all');
   const [conditions, setConditions] = useState([
     { id: 1, field: 'amount', op: '<=', value: '' },
   ]);
 
   const [nextId, setNextId] = useState(2);
+  const [loading, setLoading] = useState(isEdit);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!isEdit || !accessToken) return;
+    let cancelled = false;
+    const loadPolicy = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/v1/policies/${id}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!response.ok) throw new Error('Unable to load policy');
+        const policy = await response.json();
+        if (cancelled) return;
+        const rule = policy.ruleJson || {};
+        const nested = Array.isArray(rule.all) ? rule.all : Array.isArray(rule.any) ? rule.any : null;
+        const restored = (nested || [rule]).filter(Boolean).map((condition, index) => ({
+          id: index + 1,
+          field: condition.field || 'amount',
+          op: condition.op || '<=',
+          value: Array.isArray(condition.value) ? condition.value.join(', ') : String(condition.value ?? ''),
+        }));
+        setName(policy.name || '');
+        setPriority(policy.priority ?? 100);
+        setActive(policy.active !== false);
+        setLogic(Array.isArray(rule.any) ? 'any' : 'all');
+        setConditions(restored.length ? restored : [{ id: 1, field: 'amount', op: '<=', value: '' }]);
+        setNextId(Math.max(2, restored.length + 1));
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Unable to load policy');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    loadPolicy();
+    return () => { cancelled = true; };
+  }, [id, isEdit, accessToken]);
 
   const addRow = () => {
     setConditions(prev => [...prev, { id: nextId, field: 'amount', op: '<=', value: '' }]);
@@ -73,8 +112,24 @@ export function PolicyBuilderPage() {
   const policyJSON = buildJsonPreview(conditions, logic);
 
   const handleDryRun = () => {
-    const json = JSON.stringify(policyJSON);
+    const json = JSON.stringify({ conditions });
     navigate(`/app/dry-run#${encodeURIComponent(json)}`);
+  };
+
+  const handleSave = async () => {
+    setError('');
+    const endpoint = isEdit ? `/api/v1/policies/${id}` : '/api/v1/policies';
+    try {
+      const response = await fetch(endpoint, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ name: name || 'Untitled policy', ruleJson: policyJSON, priority, active }),
+      });
+      if (!response.ok) throw new Error('Unable to save policy');
+      navigate('/app/policies');
+    } catch (err) {
+      setError(err.message || 'Unable to save policy');
+    }
   };
 
   return (
@@ -100,6 +155,18 @@ export function PolicyBuilderPage() {
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Amount Cap Policy"
             />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1.5">Priority</label>
+              <Input type="number" min="1" value={priority} onChange={(e) => setPriority(Number(e.target.value) || 1)} />
+              <p className="mt-1 text-xs text-muted-foreground">Lower numbers run first.</p>
+            </div>
+            <div className="flex items-center gap-3 pt-6">
+              <input id="policy-active" type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 accent-primary-500" />
+              <label htmlFor="policy-active" className="text-sm text-foreground">Enable this policy immediately</label>
+            </div>
           </div>
 
           <Separator />
@@ -168,6 +235,8 @@ export function PolicyBuilderPage() {
         </CardContent>
       </Card>
 
+      {error && <p role="alert" className="text-sm text-danger-400">{error}</p>}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">JSON Preview</CardTitle>
@@ -180,8 +249,8 @@ export function PolicyBuilderPage() {
       </Card>
 
       <div className="flex items-center gap-3">
-        <Button onClick={() => {}} className="px-6">
-          Save Policy
+        <Button onClick={handleSave} className="px-6" disabled={loading}>
+          {loading ? 'Loading policy…' : 'Save Policy'}
         </Button>
         <Button variant="outline" onClick={handleDryRun} className="px-6">
           Test in Dry-Run

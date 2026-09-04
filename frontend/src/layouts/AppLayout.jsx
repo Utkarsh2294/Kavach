@@ -16,7 +16,6 @@ import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from '@/components/ui/command';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useAuth } from '@/hooks/useAuth';
 
 const NavItem = ({ to, icon: Icon, label, collapsed, active }) => {
@@ -162,9 +161,7 @@ export function AppLayout() {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Topbar */}
           <header className="h-[56px] shrink-0 border-b border-border bg-background/80 backdrop-blur sticky top-0 z-10 px-6 flex items-center justify-between">
-            <div className="flex-1 flex items-center">
-              <ThemeToggle />
-            </div>
+            <div className="flex-1" />
 
             <div className="flex-1 flex justify-center">
               <button

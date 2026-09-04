@@ -51,6 +51,17 @@ export function AuthProvider({ children }) {
         method: 'POST', body: JSON.stringify({ name, email, password }),
       }));
     },
+    async updateProfile(name) {
+      const payload = await request('/api/v1/auth/me', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
+        body: JSON.stringify({ name }),
+      });
+      const next = { ...session, user: payload.user };
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      setSession(next);
+      return payload.user;
+    },
     async logout() {
       try {
         await request('/api/v1/auth/logout', {

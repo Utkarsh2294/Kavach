@@ -4,13 +4,13 @@ from uuid import UUID
 from datetime import datetime
 from .agent import CamelModel
 
-class PolicyCreate(BaseModel):
+class PolicyCreate(CamelModel):
     name: str
     rule_json: dict  # The policy condition JSON
     priority: int = 100
     active: bool = True
 
-class PolicyUpdate(BaseModel):
+class PolicyUpdate(CamelModel):
     name: Optional[str] = None
     rule_json: Optional[dict] = None
     priority: Optional[int] = None

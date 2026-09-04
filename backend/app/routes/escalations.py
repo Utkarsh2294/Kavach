@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
@@ -49,6 +49,7 @@ async def get_escalations(
 async def process_escalation(
     escalation_id: UUID,
     action_data: EscalationAction,
+    sandbox: bool = Query(False),
     org_id: UUID = Depends(get_current_org_id),
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db)
@@ -71,10 +72,10 @@ async def process_escalation(
 
     if action_data.action == 'approve':
         esc.status = 'approved'
-        tx.decision = 'approved'
+        tx.decision = 'approve'
     elif action_data.action == 'deny':
         esc.status = 'denied'
-        tx.decision = 'denied'
+        tx.decision = 'deny'
     elif action_data.action == 'adjust_cap':
         esc.status = 'adjusted'
         if action_data.adjusted_cap_amount is not None:
@@ -89,7 +90,8 @@ async def process_escalation(
         event_type="escalation_reviewed",
         agent_id=agent.id,
         payload={"escalation_id": str(esc.id), "action": action_data.action},
-        actor_user_id=user_id
+        actor_user_id=user_id,
+        is_sandbox=esc.is_sandbox,
     )
     
     await db.commit()

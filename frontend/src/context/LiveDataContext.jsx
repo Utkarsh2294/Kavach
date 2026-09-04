@@ -24,6 +24,7 @@ export function LiveDataProvider({ children }) {
   const [transactions, setTransactions] = useState([]);
   const [pulsingIds, setPulsingIds] = useState(new Set());
   const [connected, setConnected] = useState(false);
+  const [modelReady, setModelReady] = useState(null);
   const token = accessToken || session?.accessToken;
 
   const request = useCallback(async (path, options = {}) => {
@@ -47,6 +48,13 @@ export function LiveDataProvider({ children }) {
     const txRows = await request('/api/v1/transactions');
     setAgents(nextAgents);
     setTransactions(txRows.map((tx) => toTransaction(tx, nextAgents)).slice(0, 30));
+    try {
+      const health = await fetch(`${API}/health`);
+      const body = await health.json();
+      setModelReady(Boolean(health.ok && body.ml_ready));
+    } catch {
+      setModelReady(null);
+    }
   }, [token, request]);
 
   useEffect(() => { refresh().catch(() => {}); }, [refresh]);
@@ -101,7 +109,7 @@ export function LiveDataProvider({ children }) {
     if (!policies[0]) throw new Error('Create a policy before running a dry-run');
     return request(`/api/v1/policies/${policies[0].id}/dry-run`, { method: 'POST', body: JSON.stringify({ conditions }) });
   }, [request]);
-  const data = { agents, nodes, edges, transactions, stats, pulsingIds, connected, txnRef: { current: transactions[0] }, refresh,
+  const data = { agents, nodes, edges, transactions, stats, pulsingIds, connected, modelReady, txnRef: { current: transactions[0] }, refresh,
     killAgent: (id) => kill(id, 'node'), killSubtree: (id) => kill(id, 'subtree'), killFleet: () => kill(Object.keys(agents)[0], 'fleet'), getAffectedAgents, computeExposure, dryRunPolicy };
   return (
     <LiveDataContext.Provider value={data}>

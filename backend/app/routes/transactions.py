@@ -5,7 +5,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from app.database import get_db
-from app.deps import get_current_org_id, get_current_user_id, require_role
+from app.deps import get_current_org_id, get_current_user_id, require_role, rate_limit
 from app.schemas.transaction import TransactionCreate, TransactionResponse
 from app.models import Transaction, Agent
 from app.services.transaction_pipeline import process_transaction
@@ -14,7 +14,7 @@ router = APIRouter(prefix='/api/v1/transactions', tags=['Transactions'])
 
 
 @router.post("", response_model=TransactionResponse,
-             dependencies=[Depends(require_role('operator'))])
+             dependencies=[Depends(require_role('operator')), Depends(rate_limit("transactions", 120, 60))])
 async def create_transaction(
     tx_data: TransactionCreate,
     sandbox: bool = Query(False, description="Ingest into the sandbox fleet"),

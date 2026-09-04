@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { RiskBadge } from '@/components/ui/risk-badge';
 import { ReferenceMetricCard } from '@/components/reference/ReferenceMetricCard';
@@ -11,8 +10,7 @@ import { ReferenceSkeleton, ReferenceMetricSkeleton, ReferenceRowSkeleton } from
 import { ReferenceErrorState } from '@/components/reference/ReferenceErrorState';
 
 /* Phase 01C — reference showcase. Wired at /app/reference so the visual
-   contract is verifiable in both themes. Throwaway after later phases build
-   the real screens, but kept in-repo until then. */
+   contract is verifiable against Kavach's dark operational theme. */
 
 export function ReferencePage() {
   return (
@@ -24,10 +22,9 @@ export function ReferencePage() {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Reference Showcase</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            The 6 Phase 01 reference components in one place — flip theme to verify parity.
+            The Phase 01 reference components in the Kavach dark operational theme.
           </p>
         </div>
-        <ThemeToggle />
       </div>
 
       {/* Risk badges in every threshold */}

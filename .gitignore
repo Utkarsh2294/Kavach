@@ -1,7 +1,42 @@
+# ── Dependencies ──────────────────────────────────────────────
 node_modules/
-dist/
-.env
 .venv/
-__pycache__/
+
+# ── Build artifacts ──────────────────────────────────────────
+dist/
 *.pyc
+__pycache__/
 .pytest_cache/
+
+# ── Environment files ────────────────────────────────────────
+.env
+**/.env
+!.env.example
+!.env.production.example
+!backend/.env.example
+!frontend/.env.development
+!frontend/.env.production
+
+# ── ML data and model artifacts (too large for git) ──────────
+ml/data/
+ml/artifacts/
+
+# ── IDE and OS junk ──────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Temporary files ──────────────────────────────────────────
+tmp/
+*.tmp
+*.log
+
+# ── Large and generated files ────────────────────────────────
+*.pdf
+*.pkl
+*.csv
+.coverage
+htmlcov/

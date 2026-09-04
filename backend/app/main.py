@@ -12,13 +12,16 @@ Routers registered here are the single inclusion point for every phase.
 
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.redis_client import RedisClient
 from app.services.scoring import ModelRegistry
+from app.config import get_settings
+from app.logging_config import configure_logging
 
 logger = logging.getLogger("kavach.main")
+configure_logging(get_settings().environment)
 
 
 @asynccontextmanager
@@ -76,11 +79,27 @@ app.add_middleware(
 @app.get("/health")
 async def health():
     """Health-check — reflects real infra connectivity, not just process state."""
-    return {
-        "status": "ok",
-        "ml_ready": ModelRegistry.is_ready(),
-        "redis_ready": RedisClient._pool is not None,
-    }
+    db_ready = False
+    redis_ready = False
+    try:
+        from sqlalchemy import text
+        from app.database import async_session_factory
+        async with async_session_factory() as db:
+            await db.execute(text("SELECT 1"))
+        db_ready = True
+    except Exception:
+        logger.exception("health database check failed")
+    try:
+        await RedisClient.get_client().ping()
+        redis_ready = True
+    except Exception:
+        logger.exception("health redis check failed")
+    healthy = db_ready and redis_ready and ModelRegistry.is_ready()
+    return Response(
+        content=__import__("json").dumps({"status": "ok" if healthy else "degraded", "ml_ready": ModelRegistry.is_ready(), "database_ready": db_ready, "redis_ready": redis_ready}),
+        media_type="application/json",
+        status_code=status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
 
 
 from app.routes import agents, policies, transactions, escalations, audit, auth, ws, sandbox  # noqa: E402

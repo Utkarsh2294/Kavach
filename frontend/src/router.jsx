@@ -14,17 +14,16 @@ import { DryRunPage } from './pages/app/DryRunPage';
 import { AuditLogPage } from './pages/app/AuditLogPage';
 import { CompliancePage } from './pages/app/CompliancePage';
 import { EscalationsPage } from './pages/app/EscalationsPage';
+import { AgentsPage, AgentDetailPage } from './pages/app/AgentsPage';
+import { PoliciesPage } from './pages/app/PoliciesPage';
+import { SandboxPage } from './pages/app/SandboxPage';
+import { SettingsPage } from './pages/app/SettingsPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import LandingPage from './pages/public/LandingPage';
 import {
-  AgentsPage,
-  AgentDetailPage,
-  PoliciesPage,
-  SandboxPage,
-  SettingsPage,
   NotFoundPage,
 } from './pages/app/stubs';
 

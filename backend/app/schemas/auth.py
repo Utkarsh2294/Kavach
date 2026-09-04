@@ -50,3 +50,6 @@ class MessageResponse(BaseModel):
 
 class MeResponse(CamelModel):
     user: UserResponse
+
+class UserUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
