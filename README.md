@@ -1,160 +1,213 @@
 # KAVACH
 
-**Governance and trust infrastructure for autonomous financial agents.**
+**A governance console and decisioning API for teams operating autonomous financial agents.**
 
-Kavach gives teams a single operational surface for governing AI agents that initiate financial activity. It combines deterministic policy enforcement, spend-cap controls, risk scoring, real-time oversight, and an auditable decision trail—so automated action can remain fast without becoming opaque.
+<p align="center">
+  <img src="https://img.shields.io/badge/React-19.2.8-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React 19.2.8" />
+  <img src="https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI 0.115 or later" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL 16" />
+  <img src="https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis 7" />
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker Compose" />
+</p>
 
-> **Status:** Working local prototype. The recommended way to run the complete stack is Docker Compose.
+## Contents
 
-## What it does
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Transaction workflow](#transaction-workflow)
+- [Capabilities](#capabilities)
+- [Repository layout](#repository-layout)
+- [Configuration](#configuration)
+- [Run locally](#run-locally)
+- [API contract](#api-contract)
+- [Risk decisioning](#risk-decisioning)
+- [Verification](#verification)
+- [Scope and safety](#scope-and-safety)
 
-- **Agent governance** — manage a hierarchical fleet of financial agents, including trust score, status, delegation relationships, and spending limits.
-- **Policy enforcement** — author, prioritize, activate, test, and apply deterministic rules before a transaction is allowed through.
-- **Risk decisioning** — combine deterministic rules with Isolation Forest anomaly detection and XGBoost classification to approve, escalate, or deny activity.
-- **Spend-cap protection** — enforce per-agent rolling spend limits with Redis-backed coordination and a database fallback.
-- **Human-in-the-loop review** — route uncertain or high-risk transactions to an escalation queue for review.
-- **Live operations** — stream agent, transaction, and trust-score changes over a secured WebSocket feed.
-- **Auditability** — record governance decisions in an append-only audit chain and verify its integrity.
-- **Safe demonstrations** — use the isolated sandbox to create a sample fleet and trigger a controlled rogue-agent scenario.
+## Overview
+
+Kavach governs transactions submitted by an organisation's autonomous agents. It keeps the agent fleet, policies, transactions, escalations, and audit records in PostgreSQL; Redis provides the low-latency spend-cap cache, session store, and real-time feed transport. A React operations console exposes the same API used by the system.
+
+The important design choice is that model output never replaces hard governance controls. A transaction first passes deterministic policies and agent-status/spend-cap gates. Only then do locally loaded XGBoost and Isolation Forest models assign a risk band of `approve`, `escalate`, or `deny`.
 
 ## Architecture
 
-```text
-                         Browser
-                            │
-                    React + Vite UI
-                            │
-                         Nginx
-                   ┌────────┴────────┐
-                   │                 │
-              REST /api          WebSocket /ws
-                   │                 │
-                   └────────┬────────┘
-                            │
-                     FastAPI service
-          ┌─────────────────┼──────────────────┐
-          │                 │                  │
-  Policy & rule engine  Risk scoring      Feed publisher
-          │                 │                  │
-          │       XGBoost + Isolation Forest   │
-          │                 │                  │
-          └────────────┬────┴────┬─────────────┘
-                       │         │
-                  PostgreSQL    Redis
-              system of record  cache, pub/sub & caps
+```mermaid
+flowchart TD
+    UI[React operations console] -->|HTTPS / REST| NG[Nginx]
+    UI -->|WebSocket /ws/feed| NG
+    NG -->|/api and /ws proxy| API[FastAPI]
+    API -->|async SQLAlchemy| PG[(PostgreSQL 16)]
+    API -->|sessions, spend caps, Pub/Sub| REDIS[(Redis 7)]
+    API -->|load once at startup| MODELS[Isolation Forest + XGBoost artifacts]
+    API -->|Pub/Sub events| REDIS
+    REDIS -->|WebSocket events| API
 ```
 
-All transaction decisions begin with deterministic controls. The machine-learning models are loaded once at API startup and run locally in process; the decision path makes no external inference calls.
+The production-style Compose stack exposes only Nginx on port `8080` by default. Nginx serves the static UI and proxies `/api`, `/ws`, and `/health` to FastAPI.
 
-## Technology stack
+## Transaction workflow
 
-| Layer | Technologies |
-| --- | --- |
-| Web application | React 19, React Router, Vite, Tailwind CSS, Radix UI, Lucide |
-| Visualisation | D3, Three.js, React Force Graph |
-| API | Python 3.12, FastAPI, Pydantic, Uvicorn |
-| Data | PostgreSQL 16, SQLAlchemy (async), Alembic |
-| Realtime & cache | Redis 7, Pub/Sub, WebSockets |
-| Security | JWT access/refresh tokens, bcrypt password hashing, role-based access controls, API rate limiting |
-| Intelligence | XGBoost, scikit-learn Isolation Forest, NumPy |
-| Operations | Docker, Docker Compose, Nginx, multi-stage production images |
-| Quality | pytest, pytest-asyncio, oxlint |
+1. An authenticated `operator` submits a transaction for an agent through `POST /api/v1/transactions`.
+2. The API scopes the request to the JWT's organisation and loads the real or sandbox agent fleet selected by the request.
+3. The transaction pipeline checks the agent's current status, its rolling spend cap, and active deterministic policies.
+4. If a hard governance control fails, the pipeline returns a denial and writes an audit record. Model scoring does not override that result.
+5. For transactions that pass those gates, the API derives the shared feature contract and scores it with Isolation Forest and XGBoost artifacts loaded in process.
+6. The combined score selects `approve` below `0.30`, `escalate` from `0.30` to below `0.70`, or `deny` at `0.70` and above.
+7. The transaction, its decision, and the evaluation trace are persisted; the service publishes feed updates through Redis for connected WebSocket clients.
 
-## Quick start — full stack with Docker
+## Capabilities
+
+- Manage organisation-scoped agent fleets, delegation trees, status, trust scores, and spend caps.
+- Revoke a single agent, a subtree, or an entire fleet through the delegation-aware kill switch.
+- Create, update, activate, and dry-run deterministic policies with priority ordering.
+- Submit governed transactions and inspect the rule-evaluation trace and risk score.
+- Review escalated transactions through role-protected escalation actions.
+- Verify the integrity of the append-only audit chain and retrieve the implemented NIST control mapping.
+- Connect to `/ws/feed` for a JWT-authenticated graph snapshot and subsequent transaction, agent-status, and trust-score updates.
+- Start, reset, and trigger a deliberately isolated sandbox fleet for demonstration and testing.
+
+## Repository layout
+
+```text
+Kavach/
+├── backend/
+│   ├── app/routes/          # FastAPI HTTP and WebSocket endpoints
+│   ├── app/services/        # Rule engine, scoring, audit, feed and spend-cap logic
+│   ├── app/models/          # SQLAlchemy database models
+│   ├── alembic/             # Versioned PostgreSQL migrations
+│   ├── tests/               # pytest coverage for API and safety behaviour
+│   ├── Dockerfile           # Python 3.12 production image
+│   └── entrypoint.sh        # Applies migrations before Uvicorn starts
+├── frontend/
+│   ├── src/                 # React operations console
+│   ├── Dockerfile           # Vite build + Nginx runtime image
+│   └── nginx.conf           # UI, API, WebSocket and health proxy rules
+├── ml/
+│   ├── artifacts/           # Served Isolation Forest and XGBoost model artifacts
+│   ├── features.py          # Training and serving feature contract
+│   └── *.py                 # Dataset, augmentation, training and validation scripts
+├── docs/                    # Runbooks and project documentation
+├── docker-compose.dev.yml   # PostgreSQL and Redis for local development
+└── docker-compose.prod.yml  # Full local production-style stack
+```
+
+## Configuration
+
+Copy the tracked template before running the production-style stack:
+
+```powershell
+Copy-Item .env.production.example .env.production
+```
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `POSTGRES_USER` | No | PostgreSQL user. Defaults to `kavach` in Compose. |
+| `POSTGRES_PASSWORD` | Yes | PostgreSQL password used by the database and backend. Replace the template value. |
+| `POSTGRES_DB` | No | Database name. Defaults to `kavach` in Compose. |
+| `SECRET_KEY` | Yes | HS256 JWT signing key. Replace the template value. |
+| `KAVACH_PORT` | No | Host port for Nginx. Defaults to `8080`. |
+
+The backend also accepts these optional runtime overrides through its `Settings` class: `DATABASE_URL`, `DATABASE_URL_SYNC`, `REDIS_URL`, `ENVIRONMENT`, `DEBUG`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS`, `ML_ENABLED`, `ML_ARTIFACTS_DIR`, `ML_THRESHOLD_LOW`, `ML_THRESHOLD_HIGH`, `ML_MAX_HISTORY`, and `SPEND_WINDOW_SECONDS`.
+
+## Run locally
 
 ### Prerequisites
 
 - Docker Desktop with Docker Compose v2
-- A free local port `8080`
+- Node.js 22+ and npm for frontend development
+- Python 3.12 for backend and model development
+- PowerShell (commands below target the current Windows workspace)
 
-### 1. Create local environment settings
+### Full stack with Docker
 
-```bash
-cp .env.production.example .env.production
-```
+The backend image applies Alembic migrations on startup. Seeding is deliberately a separate command, so a restart cannot overwrite an existing workspace.
 
-Replace `POSTGRES_PASSWORD` and `SECRET_KEY` in `.env.production` with long, unique values. Do not commit this file.
+```powershell
+Copy-Item .env.production.example .env.production
+# Edit .env.production and replace POSTGRES_PASSWORD and SECRET_KEY first.
 
-### 2. Build and start
-
-```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d
+docker compose --env-file .env.production -f docker-compose.prod.yml exec backend python -m app.seed
 ```
 
-Open [http://localhost:8080](http://localhost:8080). The same public endpoint also exposes the health check at [http://localhost:8080/health](http://localhost:8080/health).
+Open [http://localhost:8080](http://localhost:8080), then confirm dependencies and models are ready:
 
-### 3. Sign in to the seeded demo workspace
+```powershell
+Invoke-RestMethod http://localhost:8080/health
+```
+
+The seed script is idempotent. It creates the demo organisation, eight agents, eight policies, and these development-only users on an empty database:
 
 | Role | Email | Password |
 | --- | --- | --- |
 | Administrator | `admin@kavach.dev` | `password123` |
 | Operator | `test@kavach.dev` | `password123` |
 
-These credentials are for local demonstration only. Change or remove seeded users before any real deployment.
+### Backend and frontend development
 
-### Useful Docker commands
+Start PostgreSQL and Redis first:
 
-```bash
-# See service status
-docker compose --env-file .env.production -f docker-compose.prod.yml ps
-
-# Follow logs
-docker compose --env-file .env.production -f docker-compose.prod.yml logs -f
-
-# Stop the stack without deleting persisted data
-docker compose --env-file .env.production -f docker-compose.prod.yml down
+```powershell
+docker compose -f docker-compose.dev.yml up -d postgres redis
 ```
 
-## Local development
+In one PowerShell window, run the backend:
 
-For the quickest dependable setup, use Docker for PostgreSQL and Redis, then run the API and UI separately.
-
-```bash
-# Terminal 1 — infrastructure
-docker compose -f docker-compose.dev.yml up -d postgres redis
-
-# Terminal 2 — backend
-cd backend
+```powershell
+Set-Location backend
 python -m venv .venv
-# Windows PowerShell: .\\.venv\\Scripts\\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 alembic upgrade head
 python -m app.seed
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-# Terminal 3 — frontend
-cd frontend
+In another PowerShell window, run the frontend:
+
+```powershell
+Set-Location frontend
 npm install
 npm run dev
 ```
 
-The Vite app is available at `http://localhost:5173`; it communicates with the API on port `8000` during development.
+Vite serves the UI at [http://localhost:5173](http://localhost:5173) and proxies `/api` to FastAPI at port `8000`. FastAPI's interactive API documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
-## Risk model design
+## API contract
 
-Kavach uses a layered decision model, rather than relying on a single opaque prediction:
+All HTTP endpoints below are implemented under `/api/v1`; protected routes require a bearer access token. Role hierarchy is `viewer < reviewer < operator < admin`.
 
-```text
-Transaction
-    │
-    ├── Deterministic policy & spend-cap gates ──► deny when a hard control fails
-    │
-    └── ML scoring ──► Isolation Forest + XGBoost ──► combined risk score
-                                                       │
-                               ┌───────────────────────┼───────────────────────┐
-                               │                       │                       │
-                         < 0.30 approve         0.30–<0.70 escalate        ≥ 0.70 deny
-```
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/auth/login`, `/auth/signup`, `/auth/refresh`, `/auth/logout` | Session lifecycle; login is rate-limited to 5 attempts per minute per client. |
+| `GET`, `PATCH` | `/auth/me` | Read or update the current user's profile. |
+| `GET`, `POST` | `/agents` | List or create organisation-scoped agents. |
+| `GET`, `PUT`, `DELETE` | `/agents/{agent_id}` | Inspect, update, or remove an agent subject to hierarchy and transaction constraints. |
+| `GET` | `/agents/{agent_id}/children` | Return immediate delegated agents. |
+| `POST` | `/agents/{agent_id}/kill?mode=node\|subtree\|fleet` | Revoke an agent, its delegation subtree, or its fleet. Admin only. |
+| `POST` | `/agents/{agent_id}/simulate-exposure` | Calculate read-only worst-case exposure. |
+| `GET`, `POST` | `/policies` | List or create policies. |
+| `GET`, `PUT`, `DELETE` | `/policies/{policy_id}` | Read or manage a policy. |
+| `POST` | `/policies/{policy_id}/dry-run` | Evaluate a draft policy against existing transactions. |
+| `GET`, `POST` | `/transactions` | List transactions or submit an operator-authorised transaction. |
+| `GET`, `POST` | `/escalations`, `/escalations/{escalation_id}` | List the review queue or take an escalation action. |
+| `GET` | `/audit`, `/audit/verify`, `/compliance/nist-mapping` | Retrieve audit records, verify the chain, or view control mapping. |
+| `POST` | `/sandbox/start`, `/sandbox/reset`, `/sandbox/trigger-rogue` | Create, reset, or exercise the isolated sandbox. Operator or above. |
+| `WebSocket` | `/ws/feed?token=<access-token>&sandbox=<0\|1>` | Receive a graph snapshot and real-time organisation-scoped updates. |
 
-- **Isolation Forest** identifies behaviour that is anomalous for a particular agent.
-- **XGBoost** estimates transaction risk from the engineered feature contract.
-- **Deterministic rules** remain authoritative for explicit policy violations and governance constraints.
+## Risk decisioning
 
-Model artifacts live in `ml/artifacts/` and are included in the backend production image. To rebuild them locally:
+The model pipeline is intentionally classical and local:
 
-```bash
-cd ml
+- **Isolation Forest** flags behaviour that is unusual for the individual agent.
+- **XGBoost** classifies risk from engineered transaction and behavioural features.
+- **Deterministic rules** are authoritative for policy violations, agent status, and spend-cap controls.
+
+Training and serving share the feature contract in [`ml/features.py`](ml/features.py). Raw balance columns are excluded to prevent balance leakage; augmentation creates delta and ratio features instead. The model scripts operate on PaySim-shaped data, add per-agent rolling features and rogue patterns, and generate validation output in [`ml/validation_report.md`](ml/validation_report.md).
+
+```powershell
+Set-Location ml
 python download_paysim.py
 python augment.py
 python train_isolation_forest.py
@@ -162,60 +215,47 @@ python train_xgboost.py
 python validate.py
 ```
 
-Retrain locally by running the scripts in the `ml/` directory in order.
-
-## API overview
-
-The API is served under `/api/v1`. FastAPI’s interactive API documentation is available from the backend at `http://localhost:8000/docs` in local development.
-
-| Area | Base path | Purpose |
-| --- | --- | --- |
-| Authentication | `/api/v1/auth` | Sign-up, sign-in, token refresh, profile management |
-| Agents | `/api/v1/agents` | Agent lifecycle, hierarchy, kill switch, exposure simulation |
-| Policies | `/api/v1/policies` | Policy CRUD and dry-run evaluation |
-| Transactions | `/api/v1/transactions` | Submit and inspect governed transactions |
-| Escalations | `/api/v1/escalations` | Review workflow for escalated transactions |
-| Audit & compliance | `/api/v1/audit`, `/api/v1/compliance` | Audit records, integrity verification, NIST mapping |
-| Sandbox | `/api/v1/sandbox` | Start, reset, and demonstrate a contained scenario |
-| Live feed | `/ws/feed` | JWT-authenticated real-time WebSocket updates |
-
-## Repository layout
-
-```text
-Kavach/
-├── backend/                 FastAPI API, database models, services and tests
-│   ├── app/routes/          HTTP and WebSocket endpoints
-│   ├── app/services/        Transaction pipeline, scoring, rule engine, audit
-│   └── alembic/             Database migrations
-├── frontend/                React operations console
-├── ml/                      Data preparation, training scripts and model artifacts
-├── scripts/                 Deployment helpers
-├── docker-compose.dev.yml   Development data services
-└── docker-compose.prod.yml  Complete production-like local stack
-```
+No external LLM, remote model, or third-party inference endpoint is used in the decision path. FastAPI loads `ml/artifacts/isolation_forest.pkl` and `ml/artifacts/xgboost_risk.pkl` once at startup.
 
 ## Verification
 
-```bash
-# Backend tests
-cd backend
-python -m pytest -q
+Run the implemented backend test suite:
 
-# Frontend production bundle
-cd frontend
-npm run build
-
-# End-to-end service health (after Docker startup)
-curl http://localhost:8080/health
+```powershell
+Set-Location backend
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
-## Security notes
+Build the frontend production bundle:
 
-- Configure strong, unique `POSTGRES_PASSWORD` and `SECRET_KEY` values for every non-local environment.
-- The included demo accounts and model artifacts are intended for prototype use only.
-- Put the application behind TLS and configure an explicit CORS allowlist before an internet-facing deployment.
-- Treat the audit trail as an operational control, and retain backups of the PostgreSQL volume according to your organisation’s policies.
+```powershell
+Set-Location frontend
+npm run build
+```
 
-## License
+Check a running Docker stack:
 
-No license has been declared for this repository. Do not distribute, reuse, or deploy it outside its intended context until a license is added by the project owner.
+```powershell
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+Invoke-RestMethod http://localhost:8080/health
+```
+
+## Scope and safety
+
+- Kavach is a **local prototype**, not a production financial-control system. It does not connect to banks, payment processors, brokerages, wallets, or live funds.
+- The sandbox is an explicit safety boundary: it stores synthetic agents and transactions with `is_sandbox=True`, and fleet queries plus the WebSocket feed scope real and sandbox data separately.
+- The supplied demo credentials are public development credentials. They must be changed or omitted outside a local environment.
+- Password-reset endpoints currently return a generic response; they do not send email or implement a delivery provider.
+- The policy dry-run endpoint uses a simplified delegation-depth value of `0` when replaying existing transactions. It is useful for comparative policy review, not a full historical re-evaluation engine.
+- Redis-backed rate limiting deliberately fails open if Redis is unavailable so a cache outage does not block governance requests. Redis is still reported by `/health`, and spend-cap enforcement retains a database-status backstop.
+- HTTPS termination, production CORS origins, secret management, backups, monitoring, and an operational incident process must be supplied before any internet-facing deployment.
+
+## Build status
+
+- [x] React operations console with a dark-only interface
+- [x] FastAPI API with PostgreSQL migrations and Redis integration
+- [x] JWT authentication, role checks, session refresh and logout revocation
+- [x] Agent, policy, transaction, escalation, audit, sandbox, and WebSocket flows
+- [x] Local XGBoost and Isolation Forest training and serving artifacts
+- [x] Docker Compose deployment with Nginx reverse proxy and health checks
+- [ ] Production security hardening and live financial-provider integrations
